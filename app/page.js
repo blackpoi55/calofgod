@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import html2canvas from 'html2canvas'
+import { useEffect, useState } from 'react' 
 
 export default function Home() {
   const [totalBefore, setTotalBefore] = useState(0)
@@ -11,9 +10,6 @@ export default function Home() {
   const [amountChange, setAmountChange] = useState(0)
 
   useEffect(() => {
-    const observeScreenshot = () => {
-      setTimeout(copyImage, 500)
-    }
     const target = document.getElementById('result-section')
     if (target) {
       const observer = new MutationObserver(observeScreenshot)
@@ -93,22 +89,7 @@ export default function Home() {
       localStorage.removeItem('discountData')
     }
   }
-
-  const copyImage = async () => {
-    const el = document.getElementById('result-section')
-    if (!el) return
-    const canvas = await html2canvas(el)
-    canvas.toBlob(async (blob) => {
-      try {
-        await navigator.clipboard.write([
-          new ClipboardItem({ 'image/png': blob })
-        ])
-        alert('📋 รูปภาพถูกคัดลอกไปยัง Clipboard แล้ว!')
-      } catch (err) {
-        alert('❌ ไม่สามารถคัดลอกได้: ' + err.message)
-      }
-    })
-  }
+ 
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-100 to-purple-200 p-4">
