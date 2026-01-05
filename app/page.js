@@ -14,10 +14,15 @@ import {
   Share2,
   RefreshCw,
   CheckCircle2,
-  Circle
+  Circle,
+  QrCode,
+  Download,
+  Upload,
+  X
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import html2canvas from 'html2canvas'
 
 // --- Utility ---
 function cn(...inputs) {
@@ -95,7 +100,9 @@ export default function Home() {
   })
 
   // People: { id, name, items: [{id, name, price}], paid: boolean }
+
   const [people, setPeople] = useState([])
+  const [qrCode, setQrCode] = useState(null)
 
   // UI State
   const [newPersonName, setNewPersonName] = useState('')
@@ -113,6 +120,7 @@ export default function Home() {
         setPlatform(data.platform || 'generic')
         setBillConfig(data.billConfig || { delivery: 0, service: 0, discount: 0 })
         setPeople(data.people || [])
+        setQrCode(data.qrCode || null)
       } catch (e) {
         console.error('Failed to load saved data')
       }
@@ -128,9 +136,10 @@ export default function Home() {
     localStorage.setItem('boat-bill-splitter-v2', JSON.stringify({
       platform,
       billConfig,
-      people
+      people,
+      qrCode
     }))
-  }, [platform, billConfig, people])
+  }, [platform, billConfig, people, qrCode])
 
   // --- Calculations ---
   const calculation = useMemo(() => {
@@ -243,6 +252,41 @@ export default function Home() {
     }
   }
 
+
+  const handleQrUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5000000) { // 5MB limit
+        alert('ไฟล์ใหญ่เกินไป กรุณาใช้ไฟล์ขนาดไม่เกิน 5MB')
+        return
+      }
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setQrCode(reader.result)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const downloadReceipt = async () => {
+    if (!receiptRef.current) return
+    try {
+      const canvas = await html2canvas(receiptRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true
+      })
+      const url = canvas.toDataURL('image/png')
+      const link = document.createElement('a')
+      link.download = `receipt-${new Date().toISOString().split('T')[0]}.png`
+      link.href = url
+      link.click()
+    } catch (err) {
+      console.error('Download failed', err)
+      alert('เกิดข้อผิดพลาดในการดาวน์โหลด')
+    }
+  }
+
   const theme = Object.values(PLATFORMS).find(p => p.id === platform)?.colors || PLATFORMS.SEARCH.colors
 
   return (
@@ -328,6 +372,37 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+            </section>
+
+            {/* QR Code Settings */}
+            <section className={cn("rounded-3xl shadow-sm border p-6 transition-colors backdrop-blur-xl", theme.card, theme.border)}>
+              <h2 className={cn("flex items-center gap-2 font-bold mb-4", theme.text)}>
+                <QrCode size={20} /> QR Code (รับเงิน)
+              </h2>
+
+              {!qrCode ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 transition-colors relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleQrUpload}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <Upload className="mx-auto text-gray-400 mb-2" />
+                  <p className="text-sm text-gray-500">อัพโหลด QR Code หรือ PromptPay</p>
+                  <p className="text-xs text-gray-400 mt-1">ไฟล์จะถูกบันทึกไว้ในเครื่อง</p>
+                </div>
+              ) : (
+                <div className="relative inline-block group">
+                  <img src={qrCode} alt="QR Code" className="w-32 h-32 object-contain rounded-xl border bg-white" />
+                  <button
+                    onClick={() => setQrCode(null)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-md hover:bg-red-600 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
             </section>
 
             {/* 2. People Manager */}
@@ -483,12 +558,26 @@ export default function Home() {
                   <p className="text-xs text-gray-300 font-medium">calofgod - simple bill splitter</p>
                 </div>
 
+                {qrCode && (
+                  <div className="mt-6 pt-6 border-t border-dashed border-gray-200 flex flex-col items-center gap-2">
+                    <p className="text-xs text-gray-500 font-medium">สแกนจ่ายได้เลย</p>
+                    <img src={qrCode} alt="Payment QR" className="w-32 h-auto object-contain rounded-lg mix-blend-multiply" />
+                  </div>
+                )}
+
                 {/* Bottom Rip Decoration */}
                 <div className="absolute bottom-0 left-0 w-full h-2 bg-[radial-gradient(circle,transparent_50%,white_50%)] bg-[length:16px_16px] rotate-180 translate-y-1" />
               </div>
 
-              <div className="mt-4 text-center">
+              <div className="mt-4 text-center space-y-3">
                 <p className="text-xs text-white/50">แคปหน้าจอส่วนนี้ส่งให้เพื่อนได้เลย!</p>
+                <button
+                  onClick={downloadReceipt}
+                  className="inline-flex items-center gap-2 bg-white text-gray-800 px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-gray-50 active:scale-95 transition-all"
+                >
+                  <Download size={18} />
+                  บันทึกรูปใบเสร็จ
+                </button>
               </div>
             </div>
           </div>
